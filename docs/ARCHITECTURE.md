@@ -10,49 +10,83 @@ Este documento descreve as decisões arquiteturais do **VendAqui** e serve como 
 
 ```
 vendaqui/
-├── .github/              # Templates e CI/CD
-├── docs/                 # Documentação do projeto
-├── src/                  # Código-fonte
-│   ├── config/           # Configurações da aplicação
-│   ├── controllers/      # Controladores (lógica de rota)
-│   ├── middlewares/       # Middlewares customizados
-│   ├── models/           # Modelos de dados
-│   ├── routes/           # Definição de rotas
-│   ├── services/         # Lógica de negócio
-│   ├── utils/            # Funções utilitárias
-│   └── validators/       # Schemas de validação
-├── tests/                # Testes
-│   ├── unit/             # Testes unitários
-│   ├── integration/      # Testes de integração
-│   └── e2e/              # Testes end-to-end
-├── scripts/              # Scripts de automação
-└── infra/                # Configs de infraestrutura
+├── .github/                        # Templates e CI/CD
+├── docs/                           # Documentação do projeto
+│   ├── ARCHITECTURE.md
+│   └── adr/                        # Architecture Decision Records
+│       └── 0001-linguagem-e-framework.md
+└── src/                            # Projeto Phoenix (Elixir)
+    ├── mix.exs                     # Dependências e configuração do projeto
+    ├── config/                     # Configurações por ambiente
+    │   ├── config.exs              # Config base
+    │   ├── dev.exs                 # Config desenvolvimento (banco, mailer)
+    │   ├── prod.exs                # Config produção
+    │   └── runtime.exs             # Config de runtime (env vars)
+    ├── lib/
+    │   ├── vendaqui/               # Contextos de negócio (lógica de domínio)
+    │   │   ├── application.ex      # Supervisor principal OTP
+    │   │   ├── repo.ex             # Repositório Ecto (acesso a dados)
+    │   │   └── mailer.ex           # Integração de e-mail (Swoosh)
+    │   └── vendaqui_web/           # Camada web (Phoenix)
+    │       ├── router.ex           # Definição de rotas
+    │       ├── endpoint.ex         # Configuração do endpoint HTTP/WS
+    │       ├── controllers/        # Controllers (recebem request, retornam response)
+    │       ├── components/         # Componentes LiveView e layouts HTML
+    │       └── live/               # Módulos LiveView (UI reativa em tempo real)
+    ├── priv/
+    │   ├── repo/
+    │   │   ├── migrations/         # Migrations Ecto (versionamento do banco)
+    │   │   └── seeds.exs           # Dados iniciais
+    │   └── static/                 # Assets estáticos públicos
+    ├── assets/
+    │   ├── css/app.css             # Estilos (Tailwind CSS)
+    │   └── js/app.js               # JavaScript (ESBuild)
+    └── test/                       # Testes ExUnit
+        ├── test_helper.exs
+        └── vendaqui_web/
 ```
 
 ## 📐 Padrões Arquiteturais
 
 ### Camadas da Aplicação
 
+Phoenix segue o padrão **Contexts** para separação de domínio:
+
 ```
-[Cliente] → [Rotas] → [Middlewares] → [Controllers] → [Services] → [Models] → [Banco de Dados]
+[Cliente HTTP/WS]
+      ↓
+[Endpoint (Plug)]
+      ↓
+[Router] → [Plug Pipeline] (auth, logging, CORS)
+      ↓
+[Controller / LiveView]
+      ↓
+[Context] (lógica de negócio por domínio)
+      ↓
+[Ecto Schema + Changeset] (validação e estrutura de dados)
+      ↓
+[Repo] (acesso ao banco via Ecto)
+      ↓
+[PostgreSQL]
 ```
 
-| Camada        | Responsabilidade                              |
-|---------------|-----------------------------------------------|
-| Routes        | Definição de endpoints                        |
-| Middlewares   | Autenticação, validação, logging              |
-| Controllers   | Receber request, chamar services, retornar response |
-| Services      | Lógica de negócio                              |
-| Models        | Definição de esquemas e acesso a dados        |
-| Validators    | Schemas de validação de entrada               |
-| Utils         | Funções auxiliares reutilizáveis              |
+| Camada           | Elixir/Phoenix                              | Responsabilidade                                      |
+|------------------|---------------------------------------------|-------------------------------------------------------|
+| Router           | `vendaqui_web/router.ex`                   | Definição de rotas e pipelines                        |
+| Plug Pipeline    | Plugs no router e endpoint                  | Autenticação, CORS, logging, parsing                  |
+| Controller       | `vendaqui_web/controllers/`                | Receber conn, chamar contexts, retornar response      |
+| LiveView         | `vendaqui_web/live/`                        | UI reativa em tempo real via WebSocket                |
+| Context          | `vendaqui/` (ex: `Vendaqui.Catalog`)       | Lógica de negócio agrupada por domínio                |
+| Schema/Changeset | `vendaqui/` schemas com Ecto               | Estrutura de dados e validação de entrada             |
+| Repo             | `vendaqui/repo.ex`                          | Acesso ao banco de dados via Ecto                     |
 
 ### Princípios
 
 - **Separation of Concerns**: cada camada tem uma responsabilidade única.
-- **Dependency Injection**: serviços são injetados, não instanciados diretamente.
-- **Fail Fast**: validar inputs o mais cedo possível.
-- **Convention over Configuration**: seguir convenções consistentes.
+- **Contexts**: a lógica de negócio é agrupada em módulos de contexto (ex: `Vendaqui.Catalog`, `Vendaqui.Orders`), não em services genéricos.
+- **Fail Fast**: validações via Ecto Changesets o mais cedo possível na pipeline.
+- **Convention over Configuration**: seguir convenções do Phoenix e do Elixir (ex: `mix phx.gen.context`).
+- **Let It Crash**: confiar nos supervisors OTP para reinicialização automática em caso de falha.
 
 ## 🗄️ Banco de Dados
 
@@ -118,9 +152,33 @@ DELETE /api/v1/{resource}/:id      # Remover
 - Validação de entrada em todas as rotas
 - Sanitização de output
 
+## 🛠️ Stack Tecnológica
+
+| Camada              | Tecnologia                              |
+|---------------------|-----------------------------------------|
+| Linguagem           | Elixir 1.20+                            |
+| Runtime             | Erlang/OTP 29+                          |
+| Framework Web       | Phoenix 1.8+                            |
+| UI Reativa          | Phoenix LiveView                        |
+| Banco de Dados      | PostgreSQL (via Ecto)                   |
+| ORM/Query Layer     | Ecto                                    |
+| Validação           | Ecto Changesets                         |
+| Autenticação        | mix phx.gen.auth                        |
+| Testes              | ExUnit                                  |
+| Assets              | ESBuild + Tailwind CSS                  |
+| Deploy              | Releases OTP (mix release)              |
+
+> Veja o detalhamento e justificativas em [ADR-001](adr/0001-linguagem-e-framework.md).
+
 ## 📝 ADRs (Architecture Decision Records)
 
-Decisões arquiteturais significativas devem ser documentadas como ADRs nesta pasta.
+Decisões arquiteturais significativas são documentadas como ADRs em `docs/adr/`.
+
+### Índice de ADRs
+
+| Número | Título | Status | Data |
+|--------|--------|--------|------|
+| [ADR-001](adr/0001-linguagem-e-framework.md) | Linguagem e Framework Principal (Elixir/Phoenix) | Aceita | 2026-09-28 |
 
 ### Template de ADR
 
