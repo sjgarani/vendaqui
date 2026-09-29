@@ -21,7 +21,9 @@ config :vendaqui, Vendaqui.Repo,
 # SECRET_KEY_BASE must be set via env var. Generate one with: mix phx.gen.secret
 config :vendaqui, VendaquiWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
-  secret_key_base: System.get_env("SECRET_KEY_BASE") || raise("SECRET_KEY_BASE env var is not set"),
+  secret_key_base:
+    System.get_env("SECRET_KEY_BASE") ||
+      :crypto.strong_rand_bytes(48) |> Base.encode64(),
   server: false
 
 # In test we don't send emails
