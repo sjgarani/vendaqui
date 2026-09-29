@@ -1,11 +1,13 @@
 import Config
 
-# Configure your database
+# Configure your database.
+# Credentials are read from environment variables. Copy .env.example to .env
+# and fill in the values. NEVER commit .env or hardcode credentials here.
 config :vendaqui, Vendaqui.Repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "localhost",
-  database: "vendaqui_dev",
+  username: System.get_env("DB_USERNAME", "postgres"),
+  password: System.get_env("DB_PASSWORD", "postgres"),
+  hostname: System.get_env("DB_HOSTNAME", "localhost"),
+  database: System.get_env("DB_NAME", "vendaqui_dev"),
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
@@ -16,6 +18,9 @@ config :vendaqui, Vendaqui.Repo,
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
+#
+# SECRET_KEY_BASE must be set in your local .env file.
+# Generate a new one with: mix phx.gen.secret
 config :vendaqui, VendaquiWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
@@ -23,7 +28,7 @@ config :vendaqui, VendaquiWeb.Endpoint,
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
-  secret_key_base: "NAuw7g49cvvCiit/TZYJr2fRHU/kQNoJItt9/b3oVZtc4n/Cb3EpEjJvoKat8SVQ",
+  secret_key_base: System.fetch_env!("SECRET_KEY_BASE"),
   watchers: [
     esbuild: {Esbuild, :install_and_run, [:vendaqui, ~w(--sourcemap=inline --watch)]},
     tailwind: {Tailwind, :install_and_run, [:vendaqui, ~w(--watch)]}

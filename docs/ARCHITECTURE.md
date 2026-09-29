@@ -145,12 +145,29 @@ DELETE /api/v1/{resource}/:id      # Remover
 
 ## 🔐 Segurança
 
-- Autenticação via JWT (access token + refresh token)
-- Rate limiting por IP e por usuário
-- Helmet.js para headers de segurança
-- CORS configurado para origens permitidas
-- Validação de entrada em todas as rotas
-- Sanitização de output
+- Autenticação via `mix phx.gen.auth` (sessão segura com tokens Bcrypt)
+- Rate limiting via Plug (ex: `PlugAttack`)
+- Headers de segurança via `Plug.SSL` e Phoenix defaults
+- CORS configurado para origens permitidas via `Corsica`
+- Validação de entrada via Ecto Changesets em todas as rotas
+- Sanitização de output garantida pelo template engine HEEx (escapa HTML por padrão)
+
+### 🚫 Regra de Segurança: Sem Secrets no Código
+
+> **Nenhuma senha, token, chave ou secret pode ser hardcoded no código ou commitado no repositório.**
+
+- Todas as variáveis sensíveis são lidas via `System.get_env/1` ou `System.fetch_env!/1`
+- O arquivo `.env` com valores reais **nunca é commitado** (está no `.gitignore`)
+- Use `src/.env.example` como template — ele documenta as variáveis sem expor valores reais
+- Em CI/produção, configure como secrets no ambiente de execução (GitHub Actions Secrets, Fly.io secrets, etc.)
+- Qualquer chave exposta acidentalmente deve ser **revogada e rotacionada imediatamente**
+
+```bash
+# Gerar uma nova SECRET_KEY_BASE
+mix phx.gen.secret
+```
+
+> Veja o detalhamento em [ADR-002](adr/0002-gestao-de-secrets.md).
 
 ## 🛠️ Stack Tecnológica
 
@@ -179,6 +196,7 @@ Decisões arquiteturais significativas são documentadas como ADRs em `docs/adr/
 | Número | Título | Status | Data |
 |--------|--------|--------|------|
 | [ADR-001](adr/0001-linguagem-e-framework.md) | Linguagem e Framework Principal (Elixir/Phoenix) | Aceita | 2026-09-28 |
+| [ADR-002](adr/0002-gestao-de-secrets.md) | Gestão de Secrets e Variáveis de Ambiente | Aceita | 2026-09-28 |
 
 ### Template de ADR
 

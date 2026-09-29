@@ -1,23 +1,27 @@
 import Config
 
-# Configure your database
+# Configure your database.
+# Credentials are read from environment variables. In CI, set these via
+# secrets. Locally, copy .env.example to .env. NEVER hardcode credentials here.
 #
 # The MIX_TEST_PARTITION environment variable can be used
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
 config :vendaqui, Vendaqui.Repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "localhost",
+  username: System.get_env("DB_USERNAME", "postgres"),
+  password: System.get_env("DB_PASSWORD", "postgres"),
+  hostname: System.get_env("DB_HOSTNAME", "localhost"),
   database: "vendaqui_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
+#
+# SECRET_KEY_BASE must be set via env var. Generate one with: mix phx.gen.secret
 config :vendaqui, VendaquiWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
-  secret_key_base: "hGv60OR/fbM3+ni2W76o58aCuav3X6VmVi/RvmMuo3nEssmgfuulc6WyeD2nQnYk",
+  secret_key_base: System.get_env("SECRET_KEY_BASE") || raise("SECRET_KEY_BASE env var is not set"),
   server: false
 
 # In test we don't send emails

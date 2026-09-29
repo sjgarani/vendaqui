@@ -35,3 +35,9 @@ vendaqui-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Environment variables and local secrets — NEVER commit these files.
+# Copy .env.example to .env and fill in your local values.
+.env
+.env.local
+.env.*.local
+*.secret.exs
